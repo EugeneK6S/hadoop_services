@@ -6,6 +6,4 @@
 #
 # All rights reserved - Do Not Redistribute
 #
-class Chef::Recipe
-    include HadoopStrings
-end
+

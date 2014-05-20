@@ -9,6 +9,7 @@
 
 chef_gem "chef-rewind"
 require 'chef/rewind'
+require 'resolv'
 
 if ( node['hadoop_services']['already_secondary_nn'] ) then
 
@@ -19,6 +20,24 @@ else
 	include_recipe "java_wrapper"
 
 	include_recipe "hadoop::hadoop_hdfs_secondarynamenode"
+
+
+    hosts_array = Array.new
+    search(:node, "role:hadoop-slave").each do |n|
+        hosts_array << n['fqdn']
+        node.set['hadoop_services']['slaves'] = hosts_array
+    end
+
+    myVars = { :slavenode => node['hadoop_services']['slaves'] }
+
+    template "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/slaves" do
+        source "slaves.erb"
+        mode "0755"
+        owner "hdfs"
+        group "hdfs"
+        action :create
+        variables myVars
+    end
 
 	cookbook_file "commons-logging.properties" do
 			path "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/commons-logging.properties"

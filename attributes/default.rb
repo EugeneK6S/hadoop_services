@@ -114,10 +114,10 @@ default['hadoop']['yarn_env']['YARN_NODEMANAGER_HEAPSIZE'] = '1024'
 # core-site.xml settings
 #################################################################################################################################################################################################################################
 
-default['hadoop']['core_site']['fs.defaultFS'] = "hdfs://EVBYMINSD1F0FT1.minsk.epam.com:8020" #or port 8020???
+default['hadoop']['core_site']['fs.defaultFS'] = "hdfs://EVBYMINSD1F60T1.minsk.epam.com:8020" #or port 8020???
 default['hadoop']['core_site']['hadoop.tmp.dir'] = "/etc/hadoop/hadoop_tmp"
 default['hadoop']['core_site']['io.file.buffer.size'] = '131072'
-default['hadoop']['core_site']['ha.zookeeper.quorum'] = "EVBYMINSD1F0FT1.minsk.epam.com:2181,EVBYMINSD1F10T1.minsk.epam.com:2181"
+default['hadoop']['core_site']['ha.zookeeper.quorum'] = "EVBYMINSD1F60T1.minsk.epam.com:2181,EVBYMINSD1F5FT1.minsk.epam.com:2181"
 default['hadoop']['core_site']['hadoop.proxyuser.hcat.hosts'] = "*"
 default['hadoop']['core_site']['hadoop.proxyuser.hive.groups'] = "*"
 default['hadoop']['core_site']['hadoop.proxyuser.hcat.groups'] = "*"
@@ -152,7 +152,7 @@ default['hadoop']['hdfs_site']['dfs.blocksize'] = '134217728'
 default['hadoop']['hdfs_site']['dfs.client.read.shortcircuit.streams.cache.size'] = '4096'
 default['hadoop']['hdfs_site']['dfs.cluster.administrators'] = "hdfs"
 default['hadoop']['hdfs_site']['dfs.heartbeat.interval'] = '3'
-default['hadoop']['hdfs_site']['dfs.hosts.exclude'] = "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/dfs.exclude"
+#default['hadoop']['hdfs_site']['dfs.hosts.exclude'] = "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/dfs.exclude"
 default['hadoop']['hdfs_site']['dfs.permissions.enabled'] = true
 default['hadoop']['hdfs_site']['dfs.permissions.superusergroup'] = "hdfs"
 default['hadoop']['hdfs_site']['dfs.replication'] = '2'
@@ -173,11 +173,11 @@ default['hadoop']['hdfs_site']['fs.permissions.umask-mode'] = '022'
 
 default['hadoop']['hdfs_site']['dfs.ha.namenodes.mycluster'] = "nn1,nn2"
 #default['hadoop']['hdfs_site']['dfs.https.address'] = "#{node['fqdn']}:50470"
-default['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = "EVBYMINSD1F0FT1.minsk.epam.com:8020"
-default['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = "EVBYMINSD1F10T1.minsk.epam.com:8020"
+default['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = "EVBYMINSD1F60T1.minsk.epam.com:8020"
+default['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = "EVBYMINSD1F5FT1.minsk.epam.com:8020"
 default['hadoop']['hdfs_site']['dfs.nameservices'] = "mycluster"
-default['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = "EVBYMINSD1F0FT1.minsk.epam.com:50070"
-default['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = "EVBYMINSD1F10T1.minsk.epam.com:50070"
+default['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = "EVBYMINSD1F60T1.minsk.epam.com:50070"
+default['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = "EVBYMINSD1F5FT1.minsk.epam.com:50070"
 default['hadoop']['hdfs_site']['dfs.namenode.accesstime.precision'] = '0'
 default['hadoop']['hdfs_site']['dfs.namenode.avoid.read.stale.datanode'] = true
 default['hadoop']['hdfs_site']['dfs.namenode.avoid.write.stale.datanode'] = true
@@ -185,7 +185,7 @@ default['hadoop']['hdfs_site']['dfs.namenode.checkpoint.period'] = '21600'
 default['hadoop']['hdfs_site']['dfs.namenode.handler.count'] = '100'
 default['hadoop']['hdfs_site']['dfs.namenode.hosts'] = nil
 default['hadoop']['hdfs_site']['dfs.namenode.hosts.exclude'] = nil
-default['hadoop']['hdfs_site']['dfs.namenode.https-address'] = "EVBYMINSD1F0FT1.minsk.epam.com:50470"
+default['hadoop']['hdfs_site']['dfs.namenode.https-address'] = "EVBYMINSD1F60T1.minsk.epam.com:50470"
 default['hadoop']['hdfs_site']['dfs.https.port'] = '50470'
 default['hadoop']['hdfs_site']['dfs.namenode.name.dir'] = "#{node['hadoop']['core_site']['hadoop.tmp.dir']}/dfs/name"
 default['hadoop']['hdfs_site']['dfs.namenode.name.dir.restore'] = true
@@ -223,8 +223,8 @@ default['zookeeper']['zoocfg']['dataLogDir'] = "/var/log/zookeeper"
 
 # -> Configurations for DataNode:
 default['hadoop']['hdfs_site']['dfs.data.dir'] = "/hadoop/hdfs/data"
-default['hadoop']['hdfs_site']['dfs.datanode.data.dir'] = "/hadoop/hdfs/data,/hadoop/hdfs500"
-default['hadoop']['hdfs_site']['dfs.datanode.data.dir.perm'] = '750'
+default['hadoop']['hdfs_site']['dfs.datanode.data.dir'] = "/hadoop/hdfs/data"
+default['hadoop']['hdfs_site']['dfs.datanode.data.dir.perm'] = '755'
 default['hadoop']['hdfs_site']['dfs.datanode.http.address'] = "0.0.0.0:50075"
 default['hadoop']['hdfs_site']['dfs.datanode.max.transfer.threads'] = '1024'
 default['hadoop']['hdfs_site']['dfs.datanode.address'] = "0.0.0.0:50010"
@@ -262,8 +262,8 @@ default['hadoop']['yarn_site']['yarn.nm.liveness-monitor.expiry-interval-ms'] = 
 default['hadoop']['yarn_site']['yarn.nodemanager.resourcemanager.connect.retry_interval.secs'] = nil
 default['hadoop']['yarn_site']['yarn.nodemanager.resourcemanager.connect.wait.secs'] = nil
 default['hadoop']['yarn_site']['yarn.nodemanager.resourcemanager.minimum.version'] = nil
-default['hadoop']['yarn_site']['yarn.resourcemanager.address'] = "EVBYMINSD1F12T1.minsk.epam.com:8032" #or port 8050???
-default['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = "EVBYMINSD1F12T1.minsk.epam.com:8033" #or port 8141????
+default['hadoop']['yarn_site']['yarn.resourcemanager.address'] = "EVBYMINSD1F62T1.minsk.epam.com:8032" #or port 8050???
+default['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = "EVBYMINSD1F62T1.minsk.epam.com:8033" #or port 8141????
 default['hadoop']['yarn_site']['yarn.resourcemanager.admin.client.thread-count'] = '1'
 default['hadoop']['yarn_site']['yarn.resourcemanager.am.max-attempts'] = '2'
 default['hadoop']['yarn_site']['yarn.resourcemanager.am.max-retries'] = '1'
@@ -284,7 +284,7 @@ default['hadoop']['yarn_site']['yarn.resourcemanager.ha.automatic-failover.zk-ba
 default['hadoop']['yarn_site']['yarn.resourcemanager.ha.enabled'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.ha.id'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.ha.rm-ids'] = nil
-default['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = "EVBYMINSD1F12T1.minsk.epam.com"
+default['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = "EVBYMINSD1F62T1.minsk.epam.com"
 default['hadoop']['yarn_site']['yarn.resourcemanager.keytab'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.max-completed-applications'] = '10000'
 default['hadoop']['yarn_site']['yarn.resourcemanager.nm.liveness-monitor.interval-ms'] = '1000'
@@ -295,9 +295,9 @@ default['hadoop']['yarn_site']['yarn.resourcemanager.nodes.exclude-path'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.nodes.include-path'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.nodes.include-path'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.recovery.enabled'] = nil
-default['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address'] = "EVBYMINSD1F12T1.minsk.epam.com:8031" #or port 8025
+default['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address'] = "EVBYMINSD1F62T1.minsk.epam.com:8031" #or port 8025
 default['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.client.thread-count'] = '50'
-default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = "EVBYMINSD1F12T1.minsk.epam.com:8030"
+default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = "EVBYMINSD1F62T1.minsk.epam.com:8030"
 default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.class'] = "org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler"
 default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.class'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.client.thread-count'] = '50'
@@ -305,8 +305,8 @@ default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.monitor.enable'] 
 default['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.monitor.policies'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.state-store.max-completed-applications'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.store.class'] = nil
-default['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = "EVBYMINSD1F12T1.minsk.epam.com:8088"
-default['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = "EVBYMINSD1F12T1.minsk.epam.com:8090"
+default['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = "EVBYMINSD1F62T1.minsk.epam.com:8088"
+default['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = "EVBYMINSD1F62T1.minsk.epam.com:8090"
 default['hadoop']['yarn_site']['yarn.resourcemanager.zk-acl'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.zk-address'] = nil
 default['hadoop']['yarn_site']['yarn.resourcemanager.zk-num-retries'] = nil
@@ -326,8 +326,8 @@ default['hadoop']['yarn_site']['yarn.scheduler.minimum-allocation-mb'] = '1024'
 
 # -> Configurations for NodeManager:
 
-#default['hadoop']['yarn_site']['yarn.nodemanager.local-dirs'] = "/hadoop/mapred/yarn/local"
-#default['hadoop']['yarn_site']['yarn.nodemanager.log-dirs'] = "/hadoop/mapred/yarn/log"
+default['hadoop']['yarn_site']['yarn.nodemanager.local-dirs'] = "/hadoop/mapred/yarn/local"
+default['hadoop']['yarn_site']['yarn.nodemanager.log-dirs'] = "/hadoop/mapred/yarn/log"
 default['hadoop']['yarn_site']['yarn.nodemanager.address'] = "0.0.0.0:45454"
 default['hadoop']['yarn_site']['yarn.nodemanager.admin-env'] = 'MALLOC_ARENA_MAX=$MALLOC_ARENA_MAX'
 default['hadoop']['yarn_site']['yarn.nodemanager.aux-services'] = "mapreduce_shuffle"
@@ -348,9 +348,9 @@ default['hadoop']['yarn_site']['yarn.nodemanager.vmem-pmem-ratio'] = '2.1'
 
 
 # -> Configurations for Health Checks of NodeManagers:
-default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.path'] = nil
-default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.opts'] = nil
-default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.interval-ms'] = nil
+	# default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.path'] = nil
+	# default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.opts'] = nil
+	# default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.interval-ms'] = nil
 default['hadoop']['yarn_site']['yarn.nodemanager.health-checker.script.timeout-ms'] = '60000'
 
 

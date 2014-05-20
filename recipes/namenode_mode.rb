@@ -8,9 +8,9 @@
 #
 
 
-if node['hadoop']['hdfs_site'].has_key? 'dfs+namenode+http-address+mycluster+nn1' 
-	node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = node['hadoop']['hdfs_site']['dfs+namenode+http-address+mycluster+nn1']
-end
+# if node['hadoop']['hdfs_site'].has_key? 'dfs+namenode+http-address+mycluster+nn1' 
+# 	node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = node['hadoop']['hdfs_site']['dfs+namenode+http-address+mycluster+nn1']
+# end
 
 tmp = node['hadoop']['hdfs_site']['dfs.namenode.shared.edits.dir']
 dfs_shared_edit = tmp[7..-1]
@@ -20,6 +20,20 @@ Chef::Log.info("#{dfs_shared_edit}")
 chef_gem "chef-rewind"
 require 'chef/rewind'
 require 'net/ssh'
+
+require 'resolv'
+			
+tmp_hosts = node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1']
+dns_name = tmp_hosts[0..-7]
+id_addr = Resolv.getaddress(dns_name)
+
+ruby_block "add_to_hosts" do
+	block do
+		File.open('/etc/hosts', 'a') { |f| f.write("#{id_addr} mycluster") }
+	end
+	not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{id_addr}")} }
+end
+
 
 
 ##################################################################################################################
@@ -38,6 +52,7 @@ if node['platform_family'] == 'rhel'
 	yum_package "bigtop-utils" do
 	  action :install
 	end
+
 end
 
 if ( node['hadoop_services']['ssh']['status'] == "need_generate" ) 
@@ -110,29 +125,47 @@ search(:node, "project:#{node['project']}") do |n|
 			end
 
 			include_recipe "hadoop::default"
-			include_recipe "nfs::default"
 
-			if (File.directory?("#{dfs_shared_edit}") == false) then
-				directory "#{dfs_shared_edit}" do
-				  	mode "0755"
-				  	owner "hdfs"
-				  	group "hdfs"
-				  	action :create
-				  	recursive true
-				end
+			hosts_array = Array.new
+			search(:node, "role:hadoop-slave").each do |n|
+				hosts_array << n['fqdn']
+				node.set['hadoop_services']['slaves'] = hosts_array
 			end
 
-			search(:node, "role:hadoop-nfs-share").each do |n|
+			myVars = { :slavenode => node['hadoop_services']['slaves'] }
 
-				mount "#{dfs_shared_edit}" do
-					device "#{n['ipaddress']}:#{node['hadoop_services']['nfs_dir']}"
-					fstype "nfs"
-					options "rw"
-					action [:mount, :enable]
-					only_if { ::File.exist?("#{dfs_shared_edit}") }
-				end
-
+			template "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/slaves" do
+			    source "slaves.erb"
+				mode "0755"
+			    owner "hdfs"
+			    group "hdfs"
+			    action :create
+			    variables myVars
 			end
+
+			# include_recipe "nfs::default"
+
+			# if (File.directory?("#{dfs_shared_edit}") == false) then
+			# 	directory "#{dfs_shared_edit}" do
+			# 	  	mode "0755"
+			# 	  	owner "hdfs"
+			# 	  	group "hdfs"
+			# 	  	action :create
+			# 	  	recursive true
+			# 	end
+			# end
+
+			# search(:node, "role:hadoop-nfs-share").each do |n|
+
+			# 	mount "#{dfs_shared_edit}" do
+			# 		device "#{n['ipaddress']}:#{node['hadoop_services']['nfs_dir']}"
+			# 		fstype "nfs"
+			# 		options "rw"
+			# 		action [:mount, :enable]
+			# 		only_if { ::File.exist?("#{dfs_shared_edit}") }
+			# 	end
+
+			# end
 
 
 			##################################################################################################################
@@ -142,22 +175,32 @@ search(:node, "project:#{node['project']}") do |n|
 
 				Chef::Log.warn ("!!! U already have NameNode running !!!")
 
-			else 
+				if ( node['hadoop_services'].has_key? 'is_active_nn' and node['hadoop_services']['is_active_nn'] == "true" ) then
+					Chef::Log.warn ("!!! U already have Active NameNode running !!!")
+				else 
+					execute "hdfs-sync-standby" do
+					  	command <<-EOF
+					  	chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+						scp -o "StrictHostKeyChecking no" -i /var/lib/hadoop-hdfs/.ssh/id_rsa hdfs@#{ip_active_nn}:#{dfs_shared_edit}/current/edits* #{dfs_shared_edit}/current/
+						scp -o "StrictHostKeyChecking no" -i /var/lib/hadoop-hdfs/.ssh/id_rsa hdfs@#{ip_active_nn}:#{dfs_shared_edit}/current/VERSION #{dfs_shared_edit}/current/
+					  	EOF
+					  	group "root"
+					  	user "root"
+					  	action :run
+					end
+				end
 
+			
 			##################################################################################################################
 			## Call to Hadoop community cookbooks, creating config files and installing hadoop soft 
 			##################################################################################################################
-				
+			else 	
 
 				include_recipe "java_wrapper"
 				include_recipe "hadoop::hadoop_hdfs_namenode"
 				include_recipe "hadoop::zookeeper_server"
 				include_recipe "hadoop::hadoop_hdfs_zkfc"
 
-
-			##################################################################################################################
-			## Mounting NFS shared edits directory for both NameNodes 
-			##################################################################################################################
 
 
 				ruby_block "fix_yarn_env" do
@@ -213,18 +256,6 @@ search(:node, "project:#{node['project']}") do |n|
 					  }
 					end
 				end
-
-				myVars = { :slavenode => node['hadoop_services']['slaves'] }
-
-				template "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/slaves" do
-				    source "slaves.erb"
-					mode "0755"
-				    owner "hdfs"
-				    group "hdfs"
-				    action :create
-				    variables myVars
-				end
-
 
 				cookbook_file "commons-logging.properties" do
 			  		path "#{node['hadoop']['hadoop_env']['hadoop_conf_dir']}/commons-logging.properties"
@@ -306,25 +337,47 @@ search(:node, "project:#{node['project']}") do |n|
 				  recursive true
 				end
 
+				execute "hdfs-chown-dirs" do
+					command <<-EOF 
+					chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
+					chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
+					chown -R hdfs:hdfs #{dfs_shared_edit}
+					chown -R hdfs:hdfs /tmp/hadoop-*
+					chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+			  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
+			  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+			  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_log_dir']}
+			  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_mapred_home']}
+					EOF
+					action :run
+					group "root"
+					user "root"
+				end
+				
+
+
 			## Check if node is ACTIVE or STANDBY
 
-				if (node['hadoop_services'].has_key? 'is_active_nn' and node['hadoop_services']['is_active_nn'] == "true")
+				
 
 			##################################################################################################################
 			##  ACTIVE Namenode deployment
 			##################################################################################################################
 
+				if (node['hadoop_services'].has_key? 'is_active_nn' and node['hadoop_services']['is_active_nn'] == "true")
 
 					execute "hdfs-chown-dirs" do
 						command <<-EOF 
-						chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
-						chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
-						chown -R hdfs:hdfs #{dfs_shared_edit}
-						chown -R hdfs:hdfs /tmp/hadoop-*
-						chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
-				  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
-				  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
-						EOF
+							chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
+							chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
+							chown -R hdfs:hdfs #{dfs_shared_edit}
+							chown -R hdfs:hdfs /tmp/hadoop-*
+							chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+					  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_log_dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_mapred_home']}
+								EOF
 						action :run
 						group "root"
 						user "root"
@@ -346,32 +399,35 @@ search(:node, "project:#{node['project']}") do |n|
 
 					execute "hdfs-chown-dirs" do
 						command <<-EOF 
-						chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
-						chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
-						chown -R hdfs:hdfs #{dfs_shared_edit}
-						chown -R hdfs:hdfs /tmp/hadoop-*
-						chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
-				  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
-				  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+							chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
+							chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
+							chown -R hdfs:hdfs #{dfs_shared_edit}
+							chown -R hdfs:hdfs /tmp/hadoop-*
+							chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+					  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_log_dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_mapred_home']}
 						EOF
 						action :nothing
 						group "root"
 						user "root"
 					end
 
-					rewind "service[zookeeper-server]" do
-						action [:enable, :start]
-					end
-
-
-					# execute "zookeeper-server-start" do
-					#   	command <<-EOF
-					#  	/etc/init.d/zookeeper-server start
-					#   	EOF
-					#   	group "root"
-					#   	user "root"
-					#   	action :run
+					# rewind "service[zookeeper-server]" do
+					# 	action [:enable, :start]
 					# end
+
+
+					execute "zookeeper-server-start" do
+					  	command <<-EOF
+					 	/etc/init.d/zookeeper-server start
+					  	EOF
+					  	group "root"
+					  	user "root"
+					  	action :run
+					  	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+					end
 
 					execute "zkfc-formatZK" do
 					    command <<-EOF
@@ -380,6 +436,7 @@ search(:node, "project:#{node['project']}") do |n|
 					  	group "root"
 					  	user "root"
 					  	action :run
+					  	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
 					end
 
 					execute "hdfs-namenode-start" do
@@ -389,6 +446,7 @@ search(:node, "project:#{node['project']}") do |n|
 						group "root"
 						user "root"
 						action :run
+						notifies :run, 'execute[hdfs-chown-dirs]', :immediately
 					end
 
 					
@@ -399,6 +457,7 @@ search(:node, "project:#{node['project']}") do |n|
 						group "root"
 						user "root"
 						action :run
+						notifies :run, 'execute[hdfs-chown-dirs]', :immediately
 						notifies :create, 'ruby_block[report_namenode_status]', :immediately
 					end
 
@@ -415,11 +474,12 @@ search(:node, "project:#{node['project']}") do |n|
 					# 	action :start
 					# end
 
-				else 
+
 
 			##################################################################################################################
 			##  STANDBY Namenode deployment
 			##################################################################################################################
+				else 
 
 					Chef::Log.info("Searching servers in your project...")
 					servers_pk = Array.new
@@ -448,18 +508,19 @@ search(:node, "project:#{node['project']}") do |n|
 							    end
 							end
 						end
-
 					end
 
 					execute "hdfs-chown-dirs" do
 						command <<-EOF 
-						chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
-						chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
-						chown -R hdfs:hdfs #{dfs_shared_edit}
-						chown -R hdfs:hdfs /tmp/hadoop-*
-						chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
-				  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
-				  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+							chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
+							chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
+							chown -R hdfs:hdfs #{dfs_shared_edit}
+							chown -R hdfs:hdfs /tmp/hadoop-*
+							chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+					  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_log_dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_mapred_home']}
 						EOF
 						action :run
 						group "root"
@@ -481,13 +542,15 @@ search(:node, "project:#{node['project']}") do |n|
 
 					execute "hdfs-chown-dirs" do
 						command <<-EOF 
-						chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
-						chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
-						chown -R hdfs:hdfs #{dfs_shared_edit}
-						chown -R hdfs:hdfs /tmp/hadoop-*
-						chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
-				  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
-				  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+							chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_prefix']}-* 
+							chown -R hdfs:hdfs #{node['hadoop']['conf_dir']} 
+							chown -R hdfs:hdfs #{dfs_shared_edit}
+							chown -R hdfs:hdfs /tmp/hadoop-*
+							chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+					  		chown -R zookeeper:zookeeper #{node['zookeeper']['zoocfg']['dataLogDir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['core_site']['hadoop.tmp.dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_log_dir']}
+					  		chown -R hdfs:hdfs #{node['hadoop']['hadoop_env']['hadoop_mapred_home']}
 						EOF
 						action :nothing
 						group "root"
@@ -495,46 +558,35 @@ search(:node, "project:#{node['project']}") do |n|
 					end
 
 
-					rewind "service[zookeeper-server]" do
-						action [:enable, :start]
-						notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+					# rewind "service[zookeeper-server]" do
+					# 	action [:enable, :start]
+					# 	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+					# end
+
+					execute "zookeeper-server-start" do
+					  	command <<-EOF
+					 	/etc/init.d/zookeeper-server start
+					  	EOF
+					  	group "root"
+					  	user "root"
+					  	action :run
+					  	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
 					end
-
-					# execute "zookeeper-server-start" do
-					#   	command <<-EOF
-					#  	/etc/init.d/zookeeper-server start
-					#   	EOF
-					#   	group "root"
-					#   	user "root"
-					#   	action :run
-					#   	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
-					# end
-
-					# execute "zkfc-formatZK" do
-					#     command <<-EOF
-					#     sudo su - hdfs -c "yes Y | hdfs zkfc -formatZK"
-					#   	EOF
-					#   	group "root"
-					#   	user "root"
-					#   	action :run
-					# end
 
 					tmp_ip_active_nn = node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1']
 					ip_active_nn = tmp_ip_active_nn[0..-7]
 
-
-						# chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
-						# scp -o "StrictHostKeyChecking no" -i /var/lib/hadoop-hdfs/.ssh/id_rsa hdfs@#{ip_active_nn}:#{dfs_shared_edit}/current/edits* #{dfs_shared_edit}/current/
-						# scp -o "StrictHostKeyChecking no" -i /var/lib/hadoop-hdfs/.ssh/id_rsa hdfs@#{ip_active_nn}:#{dfs_shared_edit}/current/VERSION #{dfs_shared_edit}/current/
-
-
 					execute "fix_HDFS-3752_bootstrap_standby" do
 					  	command <<-EOF
+					  	chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
+						scp -o "StrictHostKeyChecking no" -i /var/lib/hadoop-hdfs/.ssh/id_rsa hdfs@#{ip_active_nn}:#{dfs_shared_edit}/current/edits* #{dfs_shared_edit}/current/
+						scp -o "StrictHostKeyChecking no" -i /var/lib/hadoop-hdfs/.ssh/id_rsa hdfs@#{ip_active_nn}:#{dfs_shared_edit}/current/VERSION #{dfs_shared_edit}/current/
 						sudo su - hdfs -c "yes Y | hdfs namenode -bootstrapStandby"
 					  	EOF
 					  	group "root"
 					  	user "root"
 					  	action :run
+					  	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
 					end
 
 					# rewind "execute[hdfs-namenode-bootstrap-standby]" do
@@ -559,18 +611,29 @@ search(:node, "project:#{node['project']}") do |n|
 						group "root"
 						user "root"
 						action :run
+						notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+						notifies :run, 'execute[zkfc-formatZK]', :immediately
 					end
 
-
-					execute "zkfc-start" do
-						command <<-EOF
-						sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ start zkfc"
-						EOF
-						group "root"
-						user "root"
-						action :run
-						notifies :create, 'ruby_block[report_namenode_status]', :immediately			
+					execute "zkfc-formatZK" do
+					    command <<-EOF
+					    sudo su - hdfs -c "yes Y | hdfs zkfc -formatZK"
+					  	EOF
+					  	group "root"
+					  	user "root"
+					  	action :nothing
 					end
+
+					# execute "zkfc-start" do
+					# 	command <<-EOF
+					# 	sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ start zkfc"
+					# 	EOF
+					# 	group "root"
+					# 	user "root"
+					# 	action :run
+					# 	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+					# 	notifies :create, 'ruby_block[report_namenode_status]', :immediately			
+					# end
 
 					# rewind "service[hadoop-hdfs-zkfc]" do
 					# 	action :start
