@@ -20,18 +20,59 @@ Chef::Log.info("#{dfs_shared_edit}")
 chef_gem "chef-rewind"
 require 'chef/rewind'
 require 'net/ssh'
-
 require 'resolv'
+
+## Setting attributes needed for config generation based on roles
+
+act_nn_array = Array.new
+search(:node, "role:hadoop-namenode AND hadoop_services_is_active_nn:true AND project:#{node['project']}").each do |n|
+	act_nn_array << n['fqdn']
+	act_nn_array.each do |nn1|
+		nn1_edit = "hdfs:"
+		node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = nn1 + ":8020"
+		node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = nn1 + ":50070"
+		node.set['hadoop']['core_site']['fs.defaultFS'] = "hdfs://" + nn1 + ":8020"
+		node.set['hadoop_services']['ha.zookeeper.quorum.part1'] = nn1
+		Chef::Log.info("#{node['hadoop_services']['ha.zookeeper.quorum.part1']}")
+	end
+end
+
+stndby_nn_array = Array.new
+search(:node, "role:hadoop-namenode AND hadoop_services_is_standby_nn:true AND project:#{node['project']}").each do |n|
+	stndby_nn_array << n['fqdn']
+	stndby_nn_array.each do |nn2|
+		node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = nn2 + ":8020"
+		node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = nn2 + ":50070"
+		node.set['hadoop_services']['ha.zookeeper.quorum.part2'] = nn2
+		Chef::Log.info("#{node['hadoop_services']['ha.zookeeper.quorum.part2']}")
+	end
+end
+
+node.set['hadoop']['core_site']['ha.zookeeper.quorum'] =  "#{node['hadoop_services']['ha.zookeeper.quorum.part1']}" + ',' + "#{node['hadoop_services']['ha.zookeeper.quorum.part2']}"
+
+rm_array = Array.new
+search(:node, "role:hadoop-resourcemanager AND project:#{node['project']}").each do |n|
+	rm_array << n['fqdn']
+	rm_array.each do |rm|
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.address'] = rm + ":8032"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = rm + ":8033"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = rm
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address'] = rm + ":8031"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = rm + ":8030"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = rm + ":8088"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = rm + ":8090"
+	end
+end
 			
 tmp_hosts = node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1']
 dns_name = tmp_hosts[0..-7]
-id_addr = Resolv.getaddress(dns_name)
+ip_addr = Resolv.getaddress(dns_name.to_s)
 
 ruby_block "add_to_hosts" do
 	block do
-		File.open('/etc/hosts', 'a') { |f| f.write("#{id_addr} mycluster") }
+		File.open('/etc/hosts', 'a') { |f| f.write("#{ip_addr} mycluster") }
 	end
-	not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{id_addr}")} }
+	not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{ip_addr}")} }
 end
 
 
@@ -96,8 +137,7 @@ end
 
 Chef::Log.info("Searching servers in your project...")
 servers_pk = Array.new
-
-search(:node, "project:#{node['project']}") do |n|
+search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
     if node['fqdn'] != n['fqdn'] then
         if n['hadoop_services']['ssh']['public_key'] != nil then
 			##################################################################################################################
@@ -124,10 +164,11 @@ search(:node, "project:#{node['project']}") do |n|
 			    end
 			end
 
+
 			include_recipe "hadoop::default"
 
 			hosts_array = Array.new
-			search(:node, "role:hadoop-slave").each do |n|
+			search(:node, "role:hadoop-slave AND project:#{node['project']}").each do |n|
 				hosts_array << n['fqdn']
 				node.set['hadoop_services']['slaves'] = hosts_array
 			end
@@ -176,7 +217,7 @@ search(:node, "project:#{node['project']}") do |n|
 				Chef::Log.warn ("!!! U already have NameNode running !!!")
 
 				if ( node['hadoop_services'].has_key? 'is_active_nn' and node['hadoop_services']['is_active_nn'] == "true" ) then
-					Chef::Log.warn ("!!! U already have Active NameNode running !!!")
+					Chef::Log.warn ("!!! No need to sync Active NameNode  !!!")
 				else 
 					execute "hdfs-sync-standby" do
 					  	command <<-EOF
@@ -414,11 +455,6 @@ search(:node, "project:#{node['project']}") do |n|
 						user "root"
 					end
 
-					# rewind "service[zookeeper-server]" do
-					# 	action [:enable, :start]
-					# end
-
-
 					execute "zookeeper-server-start" do
 					  	command <<-EOF
 					 	/etc/init.d/zookeeper-server start
@@ -483,7 +519,7 @@ search(:node, "project:#{node['project']}") do |n|
 
 					Chef::Log.info("Searching servers in your project...")
 					servers_pk = Array.new
-					search(:node, "project:#{node['project']}") do |n|
+					search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 					    if node['fqdn'] != n['fqdn'] then
 					            if n['hadoop_services']['ssh']['public_key'] != nil then
 					                    Chef::Log.info(n['fqdn'])
@@ -576,6 +612,17 @@ search(:node, "project:#{node['project']}") do |n|
 					tmp_ip_active_nn = node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1']
 					ip_active_nn = tmp_ip_active_nn[0..-7]
 
+					execute "zkfc-formatZK" do
+					    command <<-EOF
+					    sudo su - hdfs -c "yes Y | hdfs zkfc -formatZK"
+					  	EOF
+					  	group "root"
+					  	user "root"
+
+						notifies :run, 'execute[fix_HDFS-3752_bootstrap_standby]', :immediately
+					  	action :nothing
+					end
+
 					execute "fix_HDFS-3752_bootstrap_standby" do
 					  	command <<-EOF
 					  	chown -R hdfs:hdfs #{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}
@@ -587,6 +634,7 @@ search(:node, "project:#{node['project']}") do |n|
 					  	user "root"
 					  	action :run
 					  	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+						notifies :run, 'execute[hdfs-namenode-start]', :immediately					  	
 					end
 
 					# rewind "execute[hdfs-namenode-bootstrap-standby]" do
@@ -604,36 +652,30 @@ search(:node, "project:#{node['project']}") do |n|
 					#   user "hdfs"
 					# end
 
+
+
 					execute "hdfs-namenode-start" do
 					    command <<-EOF
 						sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ --script hdfs start namenode"
 						EOF
 						group "root"
 						user "root"
+						action :nothing
+						notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+						notifies :run, 'execute[zkfc-start]', :immediately
+					end
+
+					execute "zkfc-start" do
+						command <<-EOF
+						ps aux
+						sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ start zkfc"
+						EOF
+						group "root"
+						user "root"
 						action :run
 						notifies :run, 'execute[hdfs-chown-dirs]', :immediately
-						notifies :run, 'execute[zkfc-formatZK]', :immediately
+						notifies :create, 'ruby_block[report_namenode_status]', :immediately			
 					end
-
-					execute "zkfc-formatZK" do
-					    command <<-EOF
-					    sudo su - hdfs -c "yes Y | hdfs zkfc -formatZK"
-					  	EOF
-					  	group "root"
-					  	user "root"
-					  	action :nothing
-					end
-
-					# execute "zkfc-start" do
-					# 	command <<-EOF
-					# 	sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ start zkfc"
-					# 	EOF
-					# 	group "root"
-					# 	user "root"
-					# 	action :run
-					# 	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
-					# 	notifies :create, 'ruby_block[report_namenode_status]', :immediately			
-					# end
 
 					# rewind "service[hadoop-hdfs-zkfc]" do
 					# 	action :start

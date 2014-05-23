@@ -11,6 +11,45 @@ chef_gem "chef-rewind"
 require 'chef/rewind'
 require 'resolv'
 
+## Setting attributes needed for config generation based on roles
+
+act_nn_array = Array.new
+search(:node, "role:hadoop-namenode AND hadoop_services_is_active_nn:true AND project:#{node['project']}").each do |n|
+	act_nn_array << n['fqdn']
+	act_nn_array.each do |nn1|
+		node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = nn1 + ":8020"
+		node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = nn1 + ":50070"
+		node.set['hadoop']['core_site']['fs.defaultFS'] = nn1 + ":8020"
+		node.set['hadoop_services']['ha.zookeeper.quorum.part1'] = nn1
+	end
+end
+
+stndby_nn_array = Array.new
+search(:node, "role:hadoop-namenode AND hadoop_services_is_standby_nn:true AND project:#{node['project']}").each do |n|
+	stndby_nn_array << n['fqdn']
+	stndby_nn_array.each do |nn2|
+		node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = nn2 + ":8020"
+		node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = nn2 + ":50070"
+		node.set['hadoop_services']['ha.zookeeper.quorum.part2'] = nn2
+	end
+end
+
+node.set['hadoop']['core_site']['ha.zookeeper.quorum'] = node['hadoop_services']['ha.zookeeper.quorum.part1'] + ',' + node.set['hadoop_services']['ha.zookeeper.quorum.part2']
+
+rm_array = Array.new
+search(:node, "role:hadoop-resourcemanager AND project:#{node['project']}").each do |n|
+	rm_array << n['fqdn']
+	rm_array.each do |rm|
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.address'] = rm + ":8032"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = rm + ":8033"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = rm
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address'] = rm + ":8031"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = rm + ":8030"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = rm + ":8088"
+		node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = rm + ":8090"
+	end
+end
+
 if ( node['hadoop_services']['already_secondary_nn'] ) then
 
 	Chef::Log.warn ("!!! U already have ResourceManager running !!!")
@@ -23,7 +62,7 @@ else
 
 
     hosts_array = Array.new
-    search(:node, "role:hadoop-slave").each do |n|
+search(:node, "role:hadoop-slave AND project:#{node['project']}").each do |n|
         hosts_array << n['fqdn']
         node.set['hadoop_services']['slaves'] = hosts_array
     end
