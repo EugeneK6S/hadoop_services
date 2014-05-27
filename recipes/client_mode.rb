@@ -51,7 +51,9 @@ search(:node, "role:hadoop-resourcemanager AND project:#{node['project']}").each
 		node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = rm + ":8090"
 	end
 end
-			
+
+node.save
+
 include_recipe "hadoop::default"
 			
 tmp_hosts = node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1']

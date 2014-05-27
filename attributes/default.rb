@@ -18,8 +18,8 @@ default['java']['jdk_version'] = '6'
 
 default['hadoop_services']['hadoop_config_prefix'] = "/etc/hadoop"
 default['hadoop_services']['ssh']['status'] = "need_generate"
-# default['hadoop_services']['ssh']['private_key'] = nil
-# default['hadoop_services']['ssh']['public_key'] = nil
+default['hadoop_services']['ssh']['private_key'] = nil
+default['hadoop_services']['ssh']['public_key'] = nil
 default['hadoop_services']['slaves'] = nil
 default['hadoop_services']['nfs_dir'] = "/usr/share/hadoop/shared_edits"
 

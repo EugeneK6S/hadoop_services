@@ -50,6 +50,8 @@ search(:node, "role:hadoop-resourcemanager AND project:#{node['project']}").each
 	end
 end
 
+node.save
+
 if ( File.exists?("/run/hadoop-yarn/yarn-yarn-resourcemanager.pid") or node['hadoop_services']['already_resourcemanager'] ) then
 
 	Chef::Log.warn ("!!! U already have ResourceManager running !!!")
