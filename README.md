@@ -30,23 +30,32 @@ ATTRIBUTES should be setup in cookbook, currently CLI won't support attributes w
 
 Usage
 -----
-Roles!
 
-0. PREREQUSITE in case of NFS used for HA: or2setp -i node_ID -t "ep_chefrole=hadoop-nfs-share" 
+AUTOMATED STACK LAUNCH:
 
-1. for Standby NN: or2setp -i node_ID -t "ep_chefrole=hadoop-namenode" -t "ep_chefattributes=project=hadoopv3,hadoop_services.slaves=slave_id+slave_id2+...slave_idN"
+Use hadoop_stack.json template, located in root dir of this cookbook.
+For EPC users: template is loaded into EPC.
 
-2. for Active NN: or2setp -i node_ID -t "ep_chefrole=hadoop-namenode" -t "ep_chefattributes=project=hadoopv3,hadoop_services.is_active_nn=true,hadoop_services.slaves=slave_id+slave_id2+...slave_idN"
+MANUAL CLUSTER LAUNCH:
+
+0. PREREQUSITE in case of NFS used for HA: or2setp -i node_ID -t "ep_chefrole=hadoop-nfs-share" (NOT RECOMMENDED to use)
+
+1. for Standby NN: or2setp -i node_ID -t "ep_chefrole=hadoop-namenode" -t "ep_chefattributes=project=proj_name,hadoop_services.is_standby_nn=true"
+
+2. for Active NN: or2setp -i node_ID -t "ep_chefrole=hadoop-namenode" -t "ep_chefattributes=project=proj_name,hadoop_services.is_active_nn=true"
 
 if no HA failover -> 
 
-3. for Secondary NN: or2setp -i node_ID -t "ep_chefrole=hadoop-secondary-namenode" -t "ep_chefattributes=project=hadoopv3,hadoop_services.slaves=slave_id+slave_id2+...slave_idN"
+3. for Secondary NN: or2setp -i node_ID -t "ep_chefrole=hadoop-secondary-namenode" -t "ep_chefattributes=project=proj_name"
 
 Next step ->
 
-3. for ResourceManager: or2setp -i node_ID -t "ep_chefrole=hadoop-resourcemanager" -t "ep_chefattributes=project=hadoopv3,hadoop_services.slaves=slave_id+slave_id2+...slave_idN"
+3. for ResourceManager: or2setp -i node_ID -t "ep_chefrole=hadoop-resourcemanager" -t "ep_chefattributes=project=proj_name"
 
-4. for Slave: or2setp -i node_ID -t "ep_chefrole=hadoop-slave" -t "ep_chefattributes=project=hadoopv3,hadoop_services.slaves=slave_id+slave_id2+...slave_idN"
+4. for Slave: or2setp -i node_ID -t "ep_chefrole=hadoop-slave" -t "ep_chefattributes=project=proj_name"
+
+5. for Client: or2setp -i node_ID -t "ep_chefrole=hadoop-client" -t "ep_chefattributes=project=proj_name"
+
 
 
 Contributing

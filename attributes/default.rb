@@ -211,7 +211,7 @@ default['hadoop']['hdfs_site']['dfs.ha.automatic-failover.enabled'] = true
 default['zookeeper']['zoocfg']['clientPort'] = '2181'
 default['zookeeper']['zoocfg']['dataDir'] = "/var/lib/zookeeper"
 default['zookeeper']['zoocfg']['dataLogDir'] = "/var/log/zookeeper"
-
+7
 
 # -> Settings for Secondary NameNode 
 
@@ -240,6 +240,7 @@ default['hadoop']['hdfs_site']['dfs.client.read.shortcircuit'] = false #I DISABL
 default['hadoop']['hdfs_site']['dfs.client.read.shortcircuit.skip.checksum'] = false
 default['hadoop']['hdfs_site']['dfs.client.use.datanode.hostname'] = false
 default['hadoop']['hdfs_site']['dfs.datanode.hdfs-blocks-metadata.enabled'] = true
+default['hadoop']['hdfs_site']['dfs.datanode.max.xcievers'] = '4096'
 
 # -> Configurations for JournalNode:
 default['hadoop']['hdfs_site']['dfs.journalnode.http-address'] = "0.0.0.0:8480"
@@ -526,6 +527,30 @@ default['hadoop']['log4j']['log4j.logger.org.jets3t.service.impl.rest.httpclient
 default['hadoop']['log4j']['log4j.appender.NullAppender'] = "org.apache.log4j.varia.NullAppender"
 default['hadoop']['log4j']['log4j.appender.EventCounter'] = "org.apache.hadoop.log.metrics.EventCounter"
 
+#Zookeeper logging
+default['hadoop']['log4j']['zookeeper.root.logger'] = "INFO, CONSOLE"
+default['hadoop']['log4j']['zookeeper.console.threshold'] ="INFO"
+default['hadoop']['log4j']['zookeeper.log.dir'] = "/var/log/zookeeper"
+default['hadoop']['log4j']['zookeeper.log.maxfilesize'] = "256MB"
+default['hadoop']['log4j']['zookeeper.log.maxbackupindex'] = '20'
+default['hadoop']['log4j']['log4j.rootLogger'] = "${zookeeper.root.logger}"
+default['hadoop']['log4j']['log4j.appender.CONSOLE'] = "org.apache.log4j.ConsoleAppender"
+default['hadoop']['log4j']['log4j.appender.CONSOLE.Threshold'] = "${zookeeper.console.threshold}"
+default['hadoop']['log4j']['log4j.appender.CONSOLE.layout'] = "org.apache.log4j.PatternLayout"
+default['hadoop']['log4j']['log4j.appender.CONSOLE.layout.ConversionPattern'] = "%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE'] = "org.apache.log4j.RollingFileAppender"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE.Threshold'] = "${zookeeper.log.threshold}"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE.File'] = "${zookeeper.log.dir}/${zookeeper.log.file}"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE.MaxFileSize'] = "${zookeeper.log.maxfilesize}"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE.MaxBackupIndex'] = "${zookeeper.log.maxbackupindex}"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE.layout'] = "org.apache.log4j.PatternLayout"
+default['hadoop']['log4j']['log4j.appender.ROLLINGFILE.layout.ConversionPattern'] = "%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n"
+default['hadoop']['log4j']['log4j.appender.TRACEFILE'] = "org.apache.log4j.FileAppender"
+default['hadoop']['log4j']['log4j.appender.TRACEFILE.Threshold'] = "TRACE"
+default['hadoop']['log4j']['log4j.appender.TRACEFILE.File'] = "${zookeeper.tracelog.dir}/${zookeeper.tracelog.file}"
+default['hadoop']['log4j']['log4j.appender.TRACEFILE.layout'] = "org.apache.log4j.PatternLayout"
+default['hadoop']['log4j']['log4j.appender.TRACEFILE.layout.ConversionPattern'] = "%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L][%x] - %m%n"
+
 ###################################################################################################################################################################################################################################
 # hadoop-metrics.xml settings
 ###################################################################################################################################################################################################################################
@@ -577,3 +602,17 @@ default['hadoop']['capacity_scheduler']['yarn.scheduler.capacity.root.default.ma
 default['hadoop']['capacity_scheduler']['yarn.scheduler.capacity.root.capacity'] = '100'
 default['hadoop']['capacity_scheduler']['yarn.scheduler.capacity.root.default.user-limit-factor'] = '1'
 default['hadoop']['capacity_scheduler']['yarn.scheduler.capacity.root.queues'] = "default"
+
+
+###################################################################################################################################################################################################
+##
+## Attributes for HBase!
+## RTFM: http://hbase.apache.org/book/standalone_dist.html#distributed
+##
+###################################################################################################################################################################################################
+
+default['hadoop']['hbase_site']['hbase.rootdir'] = ""
+default['hadoop']['hbase_site']['hbase.zookeeper.quorum'] = ""
+default['hadoop']['hbase_site']['hbase.zookeeper.property.dataDir'] = "/var/lib/zookeeper"
+
+default['hadoop']['hbase_env']['hbase_manages_zk'] = false

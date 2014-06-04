@@ -14,7 +14,7 @@
 
 tmp = node['hadoop']['hdfs_site']['dfs.namenode.shared.edits.dir']
 dfs_shared_edit = tmp[7..-1]
-Chef::Log.info("#{dfs_shared_edit}")
+Chef::Log.info("Shred edits dir is: #{dfs_shared_edit}")
 
 
 chef_gem "chef-rewind"
@@ -22,52 +22,60 @@ require 'chef/rewind'
 require 'net/ssh'
 require 'resolv'
 
-## Setting attributes needed for config generation based on roles
-ruby_block "generate_config" do
-	block do
-		act_nn_array = Array.new
-		search(:node, "role:hadoop-namenode AND hadoop_services_is_active_nn:true AND project:#{node['project']}").each do |n|
-			act_nn_array << n['fqdn']
-			act_nn_array.each do |nn1|
-				nn1_edit = "hdfs:"
-				node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = nn1 + ":8020"
-				node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = nn1 + ":50070"
-				node.set['hadoop']['core_site']['fs.defaultFS'] = "hdfs://" + nn1 + ":8020"
-				node.set['hadoop_services']['ha.zookeeper.quorum.part1'] = nn1
-				Chef::Log.info("#{node['hadoop_services']['ha.zookeeper.quorum.part1']}")
+if Chef::Config[:solo]
+  	Chef::Log.warn("This recipe uses search. Chef Solo does not support search.")
+else
+	ruby_block "generate_config" do
+		block do
+			act_nn_array = Array.new
+			search(:node, "role:hadoop-namenode AND hadoop_services_is_active_nn:true AND project:#{node['project']}").each do |n|
+			# partial_search(:node, "role:hadoop-namenode AND hadoop_services_is_active_nn:true AND project:#{node['project']}", :keys => { 'fqdn' => [ 'fqdn' ] }).each do |n|
+				act_nn_array << n['fqdn']
+				act_nn_array.each do |nn1|
+					nn1_edit = "hdfs:"
+					node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = nn1 + ":8020"
+					node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = nn1 + ":50070"
+					node.set['hadoop']['core_site']['fs.defaultFS'] = "hdfs://" + nn1 + ":8020"
+					node.set['hadoop_services']['ha.zookeeper.quorum.part1'] = nn1
+					Chef::Log.info("ZK Quorum node #1 is #{node['hadoop_services']['ha.zookeeper.quorum.part1']}")
+				end
 			end
-		end
 
-		stndby_nn_array = Array.new
-		search(:node, "role:hadoop-namenode AND hadoop_services_is_standby_nn:true AND project:#{node['project']}").each do |n|
-			stndby_nn_array << n['fqdn']
-			stndby_nn_array.each do |nn2|
-				node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = nn2 + ":8020"
-				node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = nn2 + ":50070"
-				node.set['hadoop_services']['ha.zookeeper.quorum.part2'] = nn2
-				Chef::Log.info("#{node['hadoop_services']['ha.zookeeper.quorum.part2']}")
+			stndby_nn_array = Array.new
+			search(:node, "role:hadoop-namenode AND hadoop_services_is_standby_nn:true AND project:#{node['project']}").each do |n|
+				stndby_nn_array << n['fqdn']
+				stndby_nn_array.each do |nn2|
+					node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = nn2 + ":8020"
+					node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = nn2 + ":50070"
+					node.set['hadoop_services']['ha.zookeeper.quorum.part2'] = nn2
+					Chef::Log.info("ZK Quorum node #2 is #{node['hadoop_services']['ha.zookeeper.quorum.part2']}")
+				end
 			end
-		end
 
-		node.set['hadoop']['core_site']['ha.zookeeper.quorum'] =  "#{node['hadoop_services']['ha.zookeeper.quorum.part1']}" + ',' + "#{node['hadoop_services']['ha.zookeeper.quorum.part2']}"
+			#node.set['hadoop']['core_site']['ha.zookeeper.quorum'] =  "#{node['hadoop_services']['ha.zookeeper.quorum.part1']}" + ',' + "#{node['hadoop_services']['ha.zookeeper.quorum.part2']}"
+			node.set['hadoop']['core_site']['ha.zookeeper.quorum'] =  node['hadoop_services']['ha.zookeeper.quorum.part1'] + ',' + node['hadoop_services']['ha.zookeeper.quorum.part2']
 
-		rm_array = Array.new
-		search(:node, "role:hadoop-resourcemanager AND project:#{node['project']}").each do |n|
-			rm_array << n['fqdn']
-			rm_array.each do |rm|
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.address'] = rm + ":8032"
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = rm + ":8033"
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = rm
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address'] = rm + ":8031"
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = rm + ":8030"
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = rm + ":8088"
-				node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = rm + ":8090"
+			rm_array = Array.new
+			search(:node, "role:hadoop-resourcemanager AND project:#{node['project']}").each do |n|
+				rm_array << n['fqdn']
+				rm_array.each do |rm|
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.address'] = rm + ":8032"
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = rm + ":8033"
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = rm
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address'] = rm + ":8031"
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = rm + ":8030"
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = rm + ":8088"
+					node.set['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = rm + ":8090"
+				end
 			end
-		end
 
-		node.save
+			node.save
+		end
 	end
 end
+
+## Setting attributes needed for config generation based on roles
+
 			
 tmp_hosts = node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1']
 dns_name = tmp_hosts[0..-7]
@@ -350,7 +358,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 				#   recursive true
 				# end
 
-				directory "#{node['zookeeper']['zoocfg']['dataLogDir']}" do
+				directory node['zookeeper']['zoocfg']['dataLogDir'] do
 				  mode "0755"
 				  owner "zookeeper"
 				  group "zookeeper"
@@ -358,7 +366,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 				  recursive true
 				end
 
-				directory "#{node['hadoop']['hadoop_env']['hadoop_mapred_log_dir']}" do
+				directory node['hadoop']['hadoop_env']['hadoop_mapred_log_dir'] do
 				  mode "0755"
 				  owner "mapred"
 				  group "mapred"
@@ -366,7 +374,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 				  recursive true
 				end
 
-				directory "#{node['hadoop']['hadoop_env']['hadoop_pid_dir']}" do
+				directory node['hadoop']['hadoop_env']['hadoop_pid_dir'] do
 				  mode "0755"
 				  owner "hdfs"
 				  group "hdfs"
@@ -374,7 +382,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 				  recursive true
 				end
 
-				directory "#{node['hadoop']['hadoop_env']['hadoop_mapred_pid_dir']}" do
+				directory node['hadoop']['hadoop_env']['hadoop_mapred_pid_dir'] do
 				  mode "0755"
 				  owner "mapred"
 				  group "mapred"
@@ -520,7 +528,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 							    end
 							end
 
-							fname = "#{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.authorized-key-files']}"
+							fname = node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.authorized-key-files']
 							servers_pk.each do |m|
 								strcont = m+"\n"
 								if File.open(fname).lines.any?{|line| line.include?(strcont)}
@@ -643,17 +651,18 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 								#notifies :run, 'execute[zkfc-start]', :immediately
 							end
 
-							# execute "zkfc-start" do
-							# 	command <<-EOF
-							# 	ps aux
-							# 	sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ start zkfc"
-							# 	EOF
-							# 	group "root"
-							# 	user "root"
-							# 	action :nothing
-							# 	notifies :run, 'execute[hdfs-chown-dirs]', :immediately
-							# 	notifies :create, 'ruby_block[report_namenode_status]', :immediately			
-							# end
+							execute "zkfc-start" do
+								command <<-EOF
+								ps aux
+								sudo su - hdfs -c "yes Y | #{node['hadoop']['hadoop_env']['hadoop_prefix']}/sbin/hadoop-daemon.sh --config /etc/hadoop/conf.chef/ start zkfc"
+								EOF
+								group "root"
+								user "root"
+								action :nothing
+								notifies :run, 'execute[hdfs-chown-dirs]', :immediately
+								notifies :create, 'ruby_block[report_namenode_status]', :immediately
+								not_if "ps aux | grep zkfc | grep -v grep"			
+							end
 
 							# rewind "service[hadoop-hdfs-zkfc]" do
 							# 	action :start
@@ -662,6 +671,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 							ruby_block "report_namenode_status" do
 							    block do
 									node.set['hadoop_services']['already_namenode'] = true
+									node.set['hadoop_services']['already_secondary_namenode'] = true
 							    end
 							    action :nothing
 							end

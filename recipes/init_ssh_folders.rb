@@ -1,7 +1,8 @@
 
 case node['platform_family']
 when 'debian'
-        if (File.directory?("#{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}") == false) then
+        
+        if (File.directory?( node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir'] ) == false) then
                 dir1 = directory node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir'] do
                         owner "user"
                         group "user"
@@ -37,7 +38,8 @@ when 'debian'
         f3.run_action(:create_if_missing)
         
 when 'rhel'
-        if (File.directory?("#{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir']}") == false) then
+
+        if (File.directory?( node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir'] ) == false) then
                 dir1 = directory node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.dir'] do
                         owner "root"
                         group "root"

@@ -12,14 +12,20 @@ directory "#{dfs_shared_edit}" do
   	recursive true
 end
 
-search(:node, "role:hadoop-nfs-share").each do |n|
 
-	mount "#{dfs_shared_edit}" do
-		device "#{n['ipaddress']}:#{node['hadoop_services']['nfs_dir']}"
-		fstype "nfs"
-    	options "rw"
-		action [:mount, :enable]
-		only_if { ::File.exist?("#{dfs_shared_edit}") }
+if Chef::Config[:solo]
+  	Chef::Log.warn("This recipe uses search. Chef Solo does not support search.")
+else
+
+	search(:node, "role:hadoop-nfs-share").each do |n|
+
+		mount "#{dfs_shared_edit}" do
+			device "#{n['ipaddress']}:#{node['hadoop_services']['nfs_dir']}"
+			fstype "nfs"
+	    	options "rw"
+			action [:mount, :enable]
+			only_if { ::File.exist?("#{dfs_shared_edit}") }
+		end
+
 	end
-
 end
