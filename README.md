@@ -1,7 +1,6 @@
 hadoop_services Cookbook
 ========================
-This cookbook is THE GOD of HADOOP cookbooks, hahaha.
-It has recipies to install 2 NameNodes (Active+Standby HA fail-over), YARN stuff, and soon - Hbase and Pig.
+It has recipies to install 2 NameNodes (Active+Standby HA fail-over), YARN stuff, Slaves, and soon - Hbase and Pig will be implemented.
 
 Requirements
 ------------
@@ -11,7 +10,7 @@ Attributes
 ----------
 To set up next attributes before launch:
 
-node['hadoop_services']['is_active_nn'] - choose your active namenode;
+node['hadoop_services']['is_active_nn'] - choose your active namenode<br>
 node['project'] - unique name for your project, like "hadoop_user_cluster_v1"
 node['hadoop']['core_site']['ha.zookeeper.quorum'] = comma-separated list of your NameNodes
 node['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = active NN, FQDN:8020
@@ -26,7 +25,7 @@ node['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = Resource
 node['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = ResourceManager FQDN:8088
 node['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = ResourceManager FQDN:8090
 
-ATTRIBUTES should be setup in cookbook, currently CLI won't support attributes with . in name.
+ATTRIBUTES should be setup in cookbook.
 
 Usage
 -----
@@ -35,28 +34,6 @@ AUTOMATED STACK LAUNCH:
 
 Use hadoop_stack.json template, located in root dir of this cookbook.
 For EPC users: template is loaded into EPC.
-
-MANUAL CLUSTER LAUNCH:
-
-0. PREREQUSITE in case of NFS used for HA: or2setp -i node_ID -t "ep_chefrole=hadoop-nfs-share" (NOT RECOMMENDED to use)
-
-1. for Standby NN: or2setp -i node_ID -t "ep_chefrole=hadoop-namenode" -t "ep_chefattributes=project=proj_name,hadoop_services.is_standby_nn=true"
-
-2. for Active NN: or2setp -i node_ID -t "ep_chefrole=hadoop-namenode" -t "ep_chefattributes=project=proj_name,hadoop_services.is_active_nn=true"
-
-if no HA failover -> 
-
-3. for Secondary NN: or2setp -i node_ID -t "ep_chefrole=hadoop-secondary-namenode" -t "ep_chefattributes=project=proj_name"
-
-Next step ->
-
-3. for ResourceManager: or2setp -i node_ID -t "ep_chefrole=hadoop-resourcemanager" -t "ep_chefattributes=project=proj_name"
-
-4. for Slave: or2setp -i node_ID -t "ep_chefrole=hadoop-slave" -t "ep_chefattributes=project=proj_name"
-
-5. for Client: or2setp -i node_ID -t "ep_chefrole=hadoop-client" -t "ep_chefattributes=project=proj_name"
-
-
 
 Contributing
 ------------
