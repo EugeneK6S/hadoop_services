@@ -28,7 +28,7 @@ else
 					node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = nn1 + ":50070"
 					node.set['hadoop']['core_site']['fs.defaultFS'] = "hdfs://" + nn1 + ":8020"
 					node.set['hadoop_services']['ha.zookeeper.quorum.part1'] = nn1
-					Chef::Log.info("#{node['hadoop_services']['ha.zookeeper.quorum.part1']}")
+					Chef::Log.info("ZK node 1 is #{node['hadoop_services']['ha.zookeeper.quorum.part1']}")
 				end
 			end
 
@@ -39,7 +39,7 @@ else
 					node.set['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = nn2 + ":8020"
 					node.set['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = nn2 + ":50070"
 					node.set['hadoop_services']['ha.zookeeper.quorum.part2'] = nn2
-					Chef::Log.info("#{node['hadoop_services']['ha.zookeeper.quorum.part2']}")
+					Chef::Log.info("ZK node 2 is #{node['hadoop_services']['ha.zookeeper.quorum.part2']}")
 				end
 			end
 
@@ -76,7 +76,7 @@ else
 
 
     hosts_array = Array.new
-search(:node, "role:hadoop-slave AND project:#{node['project']}").each do |n|
+	search(:node, "role:hadoop-slave AND project:#{node['project']}").each do |n|
         hosts_array << n['fqdn']
         node.set['hadoop_services']['slaves'] = hosts_array
     end

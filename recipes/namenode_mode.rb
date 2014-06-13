@@ -85,7 +85,7 @@ ruby_block "add_to_hosts" do
 	block do
 		File.open('/etc/hosts', 'a') { |f| f.write("#{ip_addr} mycluster") }
 	end
-	not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{ip_addr}")} }
+	not_if { File.open('/etc/hosts').lines.any?{|line| line.include?(ip_addr)} }
 end
 
 
@@ -130,7 +130,7 @@ end
 
 ruby_block "deploy id_rsa" do
     block do
-        fname = "#{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.private-key-files']}"  
+        fname = node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.private-key-files']  
         modfile = File.open(fname, "w")
         modfile.puts node['hadoop_services']['ssh']['private_key']
         modfile.close
@@ -159,7 +159,7 @@ search(:node, "project:#{node['project']} AND role:hadoop-namenode") do |n|
 			## If keys of Active NameNode are already present - we can start 
 			######################################################################################################
             servers_pk << n['hadoop_services']['ssh']['public_key']
-            fname = "#{node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.authorized-key-files']}"
+            fname = node['hadoop']['hdfs_site']['dfs.ha.fencing.ssh.authorized-key-files']
 			servers_pk.each do |m|
 				strcont = m+"\n"
 			    if File.open(fname).lines.any?{|line| line.include?(strcont)}

@@ -67,7 +67,7 @@ if ( File.exists?("/run/hadoop-yarn/yarn-yarn-nodemanager.pid") or node['hadoop_
         block do
             File.open('/etc/hosts', 'a') { |f| f.write("#{id_addr} mycluster") }
         end
-        not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{id_addr}")} }
+        not_if { File.open('/etc/hosts').lines.any?{|line| line.include?(id_addr)} }
     end
 
     include_recipe "hadoop::default"
@@ -89,7 +89,7 @@ else
                 block do
                     File.open('/etc/hosts', 'a') { |f| f.write("#{id_addr} mycluster") }
                 end
-                not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{id_addr}")} }
+                not_if { File.open('/etc/hosts').lines.any?{|line| line.include?(id_addr)} }
             end
 
             execute "hdfs-chown-dirs" do

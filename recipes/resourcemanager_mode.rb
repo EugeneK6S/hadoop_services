@@ -97,7 +97,7 @@ if ( File.exists?("/run/hadoop-yarn/yarn-yarn-resourcemanager.pid") or node['had
 		block do
 			File.open('/etc/hosts', 'a') { |f| f.write("#{ip_addr} mycluster") }
 		end
-		not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{ip_addr}")} }
+		not_if { File.open('/etc/hosts').lines.any?{|line| line.include?(ip_addr)} }
 	end
 
 else 
@@ -141,7 +141,7 @@ else
 		block do
 			File.open('/etc/hosts', 'a') { |f| f.write("#{ip_addr} mycluster") }
 		end
-		not_if { File.open('/etc/hosts').lines.any?{|line| line.include?("#{ip_addr}")} }
+		not_if { File.open('/etc/hosts').lines.any?{|line| line.include?(ip_addr)} }
 	end
 
 
