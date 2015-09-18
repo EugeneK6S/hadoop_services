@@ -11,19 +11,19 @@ Attributes
 To set up next attributes before launch:
 
 node['hadoop_services']['is_active_nn'] - choose your active namenode<br>
-node['project'] - unique name for your project, like "hadoop_user_cluster_v1"
-node['hadoop']['core_site']['ha.zookeeper.quorum'] = comma-separated list of your NameNodes
-node['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = active NN, FQDN:8020
-node['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = standby NN, FQDN:8020
-node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = active NN, FQDN:50070 
-node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = standby NN, FQDN:50070
-node['hadoop']['yarn_site']['yarn.resourcemanager.address'] = ResourceManager FQDN:8032
-node['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = ResourceManager FQDN:8033
-node['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = ResourceManager FQDN
-node['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address' = ResourceManager FQDN:8031
-node['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = ResourceManager FQDN:8030
-node['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = ResourceManager FQDN:8088
-node['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = ResourceManager FQDN:8090
+node['project'] - unique name for your project, like "hadoop_user_cluster_v1"<br>
+node['hadoop']['core_site']['ha.zookeeper.quorum'] = comma-separated list of your NameNodes<br>
+node['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn1'] = active NN, FQDN:8020<br>
+node['hadoop']['hdfs_site']['dfs.namenode.rpc-address.mycluster.nn2'] = standby NN, FQDN:8020<br>
+node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn1'] = active NN, FQDN:50070 <br>
+node['hadoop']['hdfs_site']['dfs.namenode.http-address.mycluster.nn2'] = standby NN, FQDN:50070<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.address'] = ResourceManager FQDN:8032<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.admin.address'] = ResourceManager FQDN:8033<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.hostname'] = ResourceManager FQDN<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.resource-tracker.address' = ResourceManager FQDN:8031<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.scheduler.address'] = ResourceManager FQDN:8030<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.webapp.address'] = ResourceManager FQDN:8088<br>
+node['hadoop']['yarn_site']['yarn.resourcemanager.webapp.https.address'] = ResourceManager FQDN:8090<br>
 
 ATTRIBUTES should be setup in cookbook.
 
